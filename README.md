@@ -1,4 +1,4 @@
-# cedar-engine
+# cedar-server
 
 [Contributors |](https://github.com/karthiklsarma/cedar-server/graphs/contributors)
 [Forks |](https://github.com/karthiklsarma/cedar-server/network/members)
@@ -34,7 +34,5 @@ From ./cedar-server Directory:
   > docker run -d -p 8080:8080 `<IMAGE ID from previous step>`
 
 ## To deploy on azure
-
-- Execute deploy cedar [script](https://github.com/karthiklsarma/cedar-deploy/blob/main/cedar-deploy.sh)
 - Once the Kubernetes cluster and Container registry is deployed, Execute
   > az acr build --registry cedarcr --image cedar-server:v1 .
