@@ -40,6 +40,7 @@ func StartGraphQlServer() graphql.Schema {
 				}
 
 				logging.Debug(fmt.Sprintf("will query locations for user: %s", username))
+				// TODO: Query last location of user
 				return LocationList, nil
 			},
 		},
@@ -86,14 +87,21 @@ func StartGraphQlServer() graphql.Schema {
 				"lng": &graphql.ArgumentConfig{
 					Type: graphql.Float,
 				},
+				"timestamp": &graphql.ArgumentConfig{
+					Type: graphql.Int,
+				},
+				"device": &graphql.ArgumentConfig{
+					Type: graphql.String,
+				},
 			},
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 				id := p.Args["id"].(string)
 				lat := p.Args["lat"].(float64)
 				lng := p.Args["lng"].(float64)
-				logging.Info(fmt.Sprintf("Received id: %v, lat: %v, lng: %v", id, lat, lng))
-
-				location := &gen.Location{Id: id, Lat: lat, Lng: lng}
+				timestamp := p.Args["timestamp"].(int)
+				device := p.Args["device"].(string)
+				logging.Info(fmt.Sprintf("Received id: %v, lat: %v, lng: %v, timestamp: %v, device: %v", id, lat, lng, timestamp, device))
+				location := &gen.Location{Id: id, Lat: lat, Lng: lng, Timestamp: int64(timestamp), Device: device}
 				stream.EmitLocation(location)
 				logging.Info(fmt.Sprintf("sending location message : %v to eventqueue", location))
 				return location, nil
