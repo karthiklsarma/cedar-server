@@ -27,9 +27,14 @@ func setupRouting(router *gin.Engine) {
 }
 
 func graphqlHandler() gin.HandlerFunc {
-	gqlSchema := StartGraphQlServer()
+	var resolver IResolver = &GraphQlResolver{}
+	if err := resolver.ConnectEventQueue(); err != nil {
+		logging.Fatal("unable to connect to event queue")
+	}
+
+	schema := resolver.GetSchema()
 	gqHandler := gqlhandler.New(&gqlhandler.Config{
-		Schema: &gqlSchema,
+		Schema: &schema,
 		Pretty: true,
 	})
 	return func(c *gin.Context) {

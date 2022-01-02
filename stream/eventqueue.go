@@ -13,46 +13,61 @@ import (
 	"github.com/karthiklsarma/cedar-schema/gen"
 )
 
-var hub *eventhub.Hub
-var stream_connection_string string
-
-func getConnectionString() string {
-	return os.Getenv(STREAM_CONN_ENV)
+type IEventQueue interface {
+	Connect() error
+	EmitLocation(location *gen.Location) error
 }
 
-func EmitLocation(location *gen.Location) (bool, error) {
+type EventQueue struct {
+	hub                      *eventhub.Hub
+	stream_connection_string string
+}
+
+func (eventQueue *EventQueue) Connect() error {
+	eventQueue.stream_connection_string = os.Getenv(STREAM_CONN_ENV)
+	if len(eventQueue.stream_connection_string) == 0 {
+		err := "stream connection string is not set as environment variable."
+		logging.Fatal(err)
+		return fmt.Errorf(err)
+	}
+
+	logging.Info("Initializing event hub...")
+	var err error
+	if eventQueue.hub, err = eventhub.NewHubFromConnectionString(eventQueue.stream_connection_string); err != nil {
+		logging.Error(fmt.Sprintf("error initiating eventhub. error: %v", err))
+		return err
+	}
+
+	return nil
+}
+
+func (eventQueue *EventQueue) EmitLocation(location *gen.Location) error {
 	if location == nil {
 		logging.Error("invalid input location")
-		return false, errors.New("location is empty")
+		return errors.New("location is empty")
 	}
 
-	logging.Info(fmt.Sprintf("received location: %v", location))
-	if len(stream_connection_string) == 0 {
-		logging.Info("stream connection string empty. Fetching...")
-		stream_connection_string = getConnectionString()
-	}
+	errorChan := make(chan error)
 
-	var err error
-	if hub == nil {
-		logging.Info("hub empty. Initializing...")
-		if hub, err = eventhub.NewHubFromConnectionString(stream_connection_string); err != nil {
-			logging.Error(fmt.Sprintf("error initiating eventhub. error: %v", err))
-			return false, err
+	go func(errorChan chan error) {
+		logging.Info(fmt.Sprintf("received location: %v", location))
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+
+		location_bytes, err := proto.Marshal(location)
+		if err != nil {
+			errorChan <- err
+			return
 		}
-	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
+		if err = eventQueue.hub.Send(ctx, eventhub.NewEvent(location_bytes)); err != nil {
+			logging.Error(fmt.Sprintf("Something went wrong while sending msg to eventhub: %v", err))
+			errorChan <- err
+			return
+		}
+		logging.Info(fmt.Sprintf("successfully sent message %v to eventhub", location))
+		errorChan <- nil
+	}(errorChan)
 
-	location_bytes, err := proto.Marshal(location)
-	if err != nil {
-		return false, err
-	}
-
-	if err = hub.Send(ctx, eventhub.NewEvent(location_bytes)); err != nil {
-		logging.Error(fmt.Sprintf("Something went wrong while sending msg to eventhub: %v", err))
-		return false, err
-	}
-	logging.Info(fmt.Sprintf("successfully sent message %v to eventhub", location))
-	return true, nil
+	return <-errorChan
 }

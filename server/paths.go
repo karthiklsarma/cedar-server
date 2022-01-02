@@ -10,7 +10,20 @@ import (
 	"github.com/karthiklsarma/cedar-server/stream"
 )
 
-func StartGraphQlServer() graphql.Schema {
+type IResolver interface {
+	ConnectEventQueue() error
+	GetSchema() graphql.Schema
+}
+
+type GraphQlResolver struct {
+	eventQueue stream.IEventQueue
+}
+
+func (resolver *GraphQlResolver) GetSchema() graphql.Schema {
+	if resolver.eventQueue == nil {
+		logging.Fatal("Event Queue is nil for Resolver. Please connect to event queue before fetching schema.")
+	}
+
 	queryFields := graphql.Fields{
 		"getUsers": &graphql.Field{
 			Type:        graphql.NewList(UserType),
@@ -102,7 +115,11 @@ func StartGraphQlServer() graphql.Schema {
 				device := p.Args["device"].(string)
 				logging.Info(fmt.Sprintf("Received id: %v, lat: %v, lng: %v, timestamp: %v, device: %v", id, lat, lng, timestamp, device))
 				location := &gen.Location{Id: id, Lat: lat, Lng: lng, Timestamp: int64(timestamp), Device: device}
-				stream.EmitLocation(location)
+
+				if err := resolver.eventQueue.EmitLocation(location); err != nil {
+					return nil, err
+				}
+
 				logging.Info(fmt.Sprintf("sending location message : %v to eventqueue", location))
 				return location, nil
 			},
@@ -131,4 +148,13 @@ func StartGraphQlServer() graphql.Schema {
 	}
 
 	return schema
+}
+
+func (resolver *GraphQlResolver) ConnectEventQueue() error {
+	resolver.eventQueue = &stream.EventQueue{}
+	if err := resolver.eventQueue.Connect(); err != nil {
+		logging.Fatal("Failed to connect to event queue.")
+		return err
+	}
+	return nil
 }
