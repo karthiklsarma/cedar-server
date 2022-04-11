@@ -128,7 +128,7 @@ func (resolver *GraphQlResolver) GetSchema() graphql.Schema {
 				timestamp := p.Args["timestamp"].(int)
 				device := p.Args["device"].(string)
 				logging.Info(fmt.Sprintf("Received id: %v, lat: %v, lng: %v, timestamp: %v, device: %v", id, lat, lng, timestamp, device))
-				location := &gen.Location{Id: id, Lat: lat, Lng: lng, Timestamp: int64(timestamp), Device: device}
+				location := &gen.Location{Id: id, Lat: lat, Lng: lng, Timestamp: uint64(timestamp), Device: device}
 
 				if err := resolver.eventQueue.EmitLocation(location); err != nil {
 					return nil, err
