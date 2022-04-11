@@ -12,5 +12,5 @@ require (
 	github.com/graphql-go/handler v0.2.3 // indirect
 	github.com/karthiklsarma/cedar-logging v0.0.0-20211114211450-10efc11e1d03
 	github.com/karthiklsarma/cedar-schema v0.0.0-20220410210049-1d357e203b5d
-	github.com/karthiklsarma/cedar-storage v0.0.0-20220410224909-a3e3da6b2d57
+	github.com/karthiklsarma/cedar-storage v0.0.0-20220627031431-42579db488c6
 )

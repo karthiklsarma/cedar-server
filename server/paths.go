@@ -50,6 +50,40 @@ func (resolver *GraphQlResolver) GetSchema() graphql.Schema {
 				return LocationList, nil
 			},
 		},
+		"authenticate": &graphql.Field{
+			Type:        graphql.String,
+			Description: "Authenticate User",
+			Args: graphql.FieldConfigArgument{
+				"username": &graphql.ArgumentConfig{
+					Type: graphql.String,
+				},
+				"password": &graphql.ArgumentConfig{
+					Type: graphql.String,
+				},
+			},
+			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+				username, ok := p.Args["username"].(string)
+				if !ok {
+					return "no crenetials present.", errors.New("username not provided or invalid username")
+				}
+
+				password, ok := p.Args["password"].(string)
+				if !ok {
+					return "no credentials present.", errors.New("password not provided or invalid username")
+				}
+
+				status, err := AuthenticateUser(username, password)
+				if !status {
+					return "invalid Credentials", errors.New("Invalid credentials ! login failed.")
+				}
+
+				if err != nil {
+					return "internal server error", errors.New("Unable to authenticate at the moment. Something went wrong !")
+				}
+
+				return GetNewToken(username), nil
+			},
+		},
 	}
 
 	mutationFields := graphql.Fields{
@@ -122,6 +156,7 @@ func (resolver *GraphQlResolver) GetSchema() graphql.Schema {
 				},
 			},
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+
 				id := p.Args["id"].(string)
 				lat := p.Args["lat"].(float64)
 				lng := p.Args["lng"].(float64)
