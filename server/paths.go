@@ -25,13 +25,6 @@ func (resolver *GraphQlResolver) GetSchema() graphql.Schema {
 	}
 
 	queryFields := graphql.Fields{
-		"getUsers": &graphql.Field{
-			Type:        graphql.NewList(UserType),
-			Description: "List of users",
-			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				return UsersList, nil
-			},
-		},
 		"getLocations": &graphql.Field{
 			Type:        graphql.NewList(LocationType),
 			Description: "Location of users",
@@ -60,34 +53,55 @@ func (resolver *GraphQlResolver) GetSchema() graphql.Schema {
 	}
 
 	mutationFields := graphql.Fields{
-		"setUsers": &graphql.Field{
+		"addUser": &graphql.Field{
 			Type:        UserType,
 			Description: "Add New User",
 			Args: graphql.FieldConfigArgument{
-				"id": &graphql.ArgumentConfig{
+				"username": &graphql.ArgumentConfig{
 					Type: graphql.String,
 				},
-				"username": &graphql.ArgumentConfig{
+				"firstname": &graphql.ArgumentConfig{
+					Type: graphql.String,
+				},
+				"lastname": &graphql.ArgumentConfig{
 					Type: graphql.String,
 				},
 				"password": &graphql.ArgumentConfig{
 					Type: graphql.String,
 				},
+				"email": &graphql.ArgumentConfig{
+					Type: graphql.String,
+				},
+				"phone": &graphql.ArgumentConfig{
+					Type: graphql.String,
+				},
 			},
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				id, _ := p.Args["id"].(string)
 				username, _ := p.Args["username"].(string)
+				firstname, _ := p.Args["firstname"].(string)
+				lastname, _ := p.Args["lastname"].(string)
+				password, _ := p.Args["password"].(string)
+				email, _ := p.Args["email"].(string)
+				phone, _ := p.Args["phone"].(string)
 
-				newUser := User{
-					Id:       id,
-					Username: username,
+				newUser := &gen.User{
+					Firstname: firstname,
+					Lastname:  lastname,
+					Username:  username,
+					Password:  password,
+					Email:     email,
+					Phone:     phone,
 				}
 
-				UsersList = append(UsersList, newUser)
+				if status, err := RegisterUser(newUser); !status {
+					logging.Error(fmt.Sprintf("failed to register user. Error: {%v}", err))
+					return nil, err
+				}
+
 				return newUser, nil
 			},
 		},
-		"setLocation": &graphql.Field{
+		"sendLocation": &graphql.Field{
 			Type:        LocationType,
 			Description: "location of the user",
 			Args: graphql.FieldConfigArgument{

@@ -1,13 +1,12 @@
 package server
 
-var UsersList []User
-
 var LocationList []Location
 
 type User struct {
 	Id       string   `json:"id"`
 	Username string   `json:"username"`
 	Password string   `json:"password"`
+	Email    string   `json:"email"`
 	Location Location `json:"location"`
 	Groups   []string `json:"Groups"`
 }
