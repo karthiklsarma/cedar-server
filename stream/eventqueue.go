@@ -23,12 +23,22 @@ type EventQueue struct {
 	stream_connection_string string
 }
 
+func (q *EventQueue) GetHub() *eventhub.Hub {
+	return q.hub
+}
+
+func (q *EventQueue) SetStreamConnectionString(constr string) {
+	q.stream_connection_string = constr
+}
+
 func (eventQueue *EventQueue) Connect() error {
-	eventQueue.stream_connection_string = os.Getenv(STREAM_CONN_ENV)
 	if len(eventQueue.stream_connection_string) == 0 {
-		err := "stream connection string is not set as environment variable."
-		logging.Fatal(err)
-		return fmt.Errorf(err)
+		eventQueue.stream_connection_string = os.Getenv(STREAM_CONN_ENV)
+		if len(eventQueue.stream_connection_string) == 0 {
+			err := "stream connection string is not set as environment variable."
+			logging.Fatal(err)
+			return fmt.Errorf(err)
+		}
 	}
 
 	logging.Info("Initializing event hub...")
@@ -48,12 +58,10 @@ func (eventQueue *EventQueue) EmitLocation(location *gen.Location) error {
 	}
 
 	errorChan := make(chan error)
-
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
 	go func(errorChan chan error) {
 		logging.Info(fmt.Sprintf("received location: %v", location))
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-		defer cancel()
-
 		location_bytes, err := proto.Marshal(location)
 		if err != nil {
 			errorChan <- err
@@ -66,7 +74,7 @@ func (eventQueue *EventQueue) EmitLocation(location *gen.Location) error {
 			return
 		}
 		logging.Info(fmt.Sprintf("successfully sent message %v to eventhub", location))
-		errorChan <- nil
+		close(errorChan)
 	}(errorChan)
 
 	return <-errorChan
